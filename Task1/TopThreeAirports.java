@@ -2,55 +2,79 @@ import org.apache.flink.api.common.functions.GroupReduceFunction;
 import org.apache.flink.api.common.functions.JoinFunction;
 import org.apache.flink.api.java.DataSet;
 import org.apache.flink.api.java.ExecutionEnvironment;
+import org.apache.flink.api.java.tuple.Tuple2;
 import org.apache.flink.api.java.tuple.Tuple3;
 import org.apache.flink.api.java.tuple.Tuple5;
 import org.apache.flink.util.Collector;
 import org.apache.flink.api.common.operators.Order;
+import java.util.List;
+import java.util.Date;
 
 public class TopThreeAirports {
     public static void main(String[] args) throws Exception {
         // obtain an execution environment
         ExecutionEnvironment env = ExecutionEnvironment.getExecutionEnvironment();
+        // use the local file, CHANGE this if needed
+        String localFlightDataDir = "/media/sf_vm-shared-folder/data3404-workspace/DATA3404-Assignment/assignment_data_files/ontimeperformance_flights_tiny.csv";
+        // use the file stored in hadoop, CHANGE this if needed
+        String flightDataDir = "hdfs://localhost:9000/user/hche8927/assignment-data/ontimeperformance_flights_tiny.csv";
 
-        String localAirportDatDir = "/media/sf_vm-shared-folder/data3404-workspace/assignment/assignment_data_files/ontimeperformance_airports.csv";
-        String localFlightDataDir = "/media/sf_vm-shared-folder/data3404-workspace/assignment/assignment_data_files/ontimeperformance_flights_small.csv";
-        String localSampleFlightDataDir = "/media/sf_vm-shared-folder/data3404-workspace/assignment/assignment_data_files/sample.csv";
+        // retrieve data from file
+        DataSet<Tuple2<String, String>> flights = env.readCsvFile(flightDataDir)
+                                                    .includeFields("000110000000") // (date, airport_code)
+                                                    .ignoreFirstLine()
+                                                    .ignoreInvalidLines()
+                                                    .types(String.class, String.class); // specify type for each field
 
-        String airportDataDir = "hdfs://localhost:9000/user/hche8927/assignment-data/ontimeperformance_airports.csv";
-        String flightDataDir = "hdfs://localhost:9000/user/hche8927/assignment-data/ontimeperformance_flights_small.csv";
+        // specify which year we want to retrieve
+        int targetYear = 1994;
 
-        DataSet<Tuple3<String, String, String>> airports =
-            env.readCsvFile(airportDataDir)
-            .includeFields("1110000")
-            .ignoreFirstLine()
-            .ignoreInvalidLines()
-            .types(String.class, String.class, String.class);
+        // filter out undesired tuples
+        DataSet<Tuple2<String, String>> yearReduceResult = flights.reduceGroup(new YearReducer(targetYear));
 
-        DataSet<Tuple3<String, String, String>> flights =
-            env.readCsvFile(localSampleFlightDataDir)
-            .includeFields("100110000000")
-            .ignoreFirstLine()
-            .ignoreInvalidLines()
-            .types(String.class, String.class, String.class);
-
-        DataSet<Tuple5<String, String, String, String, String>> joinResult =
-            airports.join(flights)
-            .where(0)
-            .equalTo(2)
-            // .setParallelism(1)
-            .with(new JoinAF());
-
-        joinResult.print();
+        // the result
+        DataSet<Tuple2<String, Integer>> countResult = yearReduceResult.groupBy(1) // group the data by airport code
+                                                                    .reduceGroup(new AirportCounter()) // for each group, apply the "GroupReduceFunction"
+                                                                    .sortPartition(1, Order.DESCENDING); // sort by number of flights from reduction result
+        // get top 3 results and print them
+        countResult.first(3).print();
     }
 
-    private static class JoinAF implements JoinFunction<Tuple3<String, String, String>,
-                                                        Tuple3<String, String, String>,
-                                                        Tuple5<String, String, String, String, String>> {
+    // NOTE: GroupReduceFunction<type of input, type of output>
+    // in this case GroupReduceFunction<Tuple2<DATE, AIRLINE_CODE>, Tuple2<DATE, AIRLINE_CODE>>
+    // 
+    // Only return flight record from give year
+    public static class YearReducer implements GroupReduceFunction<Tuple2<String, String>, Tuple2<String, String>> {
+        // target year
+        private int year;
+
+        // constructor
+        YearReducer(int year) {
+            this.year = year;
+        }
+
         @Override
-        public Tuple5<String, String, String, String, String> join(
-            Tuple3<String, String, String> first,
-            Tuple3<String, String, String> second) {
-            return new Tuple5<String, String, String, String, String>(second.f0, second.f1, first.f0, first.f1, first.f2);
+        public void reduce(Iterable<Tuple2<String, String>> records, Collector<Tuple2<String, String>> out) throws Exception {
+            for (Tuple2<String, String> flight : records) {
+                if (year != Integer.parseInt(flight.f0.split("-")[0])) continue;
+                out.collect(flight);
+            }
+        }
+    }
+
+    // NOTE: In this case GroupReduceFunction<Tuple2<DATE, AIRLINE_CODE>, Tuple2<AIRLINE_CODE, COUNTER>>
+    // 
+    // Count number of records for each group (grouped by airline_code)
+    public static class AirportCounter implements GroupReduceFunction<Tuple2<String, String>, Tuple2<String, Integer>> {
+        @Override
+        public void reduce(Iterable<Tuple2<String, String>> records, Collector<Tuple2<String, Integer>> out) throws Exception {
+            String airport = null;
+            int cnt = 0;
+            for (Tuple2<String, String> r : records) {
+                airport = r.f1;
+                cnt++;
+            }
+            out.collect(new Tuple2<>(airport, cnt));
         }
     }
 
