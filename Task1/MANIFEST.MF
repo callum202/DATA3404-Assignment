@@ -1,0 +1,2 @@
+Main-Class: TopThreeAirports
+Class-Path: /usr/local/flink/lib/*.jar
