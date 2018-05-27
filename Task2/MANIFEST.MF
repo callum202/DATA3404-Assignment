@@ -1,0 +1,2 @@
+Main-Class: AverageFlightDelay
+Class-Path: /usr/local/flink/lib/*.jar
