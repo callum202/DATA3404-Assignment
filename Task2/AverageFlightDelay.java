@@ -102,6 +102,7 @@ public class AverageFlightDelay {
                 if (flight.f2.equals("") || flight.f3.equals("") || flight.f4.equals("") || flight.f5.equals("") ) continue;
 
                 DateFormat formatter = new SimpleDateFormat("HH:mm:ss");
+
                 Date expectDepart = (Date)formatter.parse(flight.f2);
                 Date actualDepart = (Date)formatter.parse(flight.f4);
                 Date expectArrive = (Date)formatter.parse(flight.f3);
