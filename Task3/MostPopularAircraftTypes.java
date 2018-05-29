@@ -1,5 +1,6 @@
 import org.apache.flink.api.common.functions.GroupReduceFunction;
 import org.apache.flink.api.common.functions.JoinFunction;
+import org.apache.flink.api.common.operators.Order;
 import org.apache.flink.api.java.DataSet;
 import org.apache.flink.api.java.ExecutionEnvironment;
 import org.apache.flink.api.java.operators.UnsortedGrouping;
@@ -10,10 +11,6 @@ import org.apache.flink.api.java.tuple.Tuple4;
 import org.apache.flink.api.java.tuple.Tuple5;
 import org.apache.flink.api.java.tuple.Tuple6;
 import org.apache.flink.util.Collector;
-
-
-
-import org.apache.flink.api.common.operators.Order;
 import java.util.List;
 import java.util.ArrayList;
 import java.util.Date;
@@ -40,23 +37,24 @@ public class MostPopularAircraftTypes {
         String flightDataDir = "hdfs://localhost:9000/user/hche8927/assignment-data/ontimeperformance_flights_tiny.csv";
         
         String localAircraftDataDir = "/Users/callumvandenhoek/Google Drive/Uni/DATA3404/Assignment/thing/ontimeperformance_aircrafts.csv";
+        String aircraftDataDir = "hdfs://localhost:9000/user/hche8927/assignment-data/ontimeperformance_aircrafts.csv";
 
         // retrieve airline data from file: <airline_code, airline_name, country>
-        DataSet<Tuple3<String, String, String>> airline = env.readCsvFile(localAirlineDataDir)
+        DataSet<Tuple3<String, String, String>> airline = env.readCsvFile(airlineDataDir)
                                                         .includeFields("111")
                                                         .ignoreFirstLine()
                                                         .ignoreInvalidLines()
                                                         .types(String.class,String.class, String.class);
 
         // retrieve flight data from file: <airline_code, tail_number>
-        DataSet<Tuple2<String, String>> flights = env.readCsvFile(localFlightDataDir)
+        DataSet<Tuple2<String, String>> flights = env.readCsvFile(flightDataDir)
                                                             .includeFields("010000100000")
                                                             .ignoreFirstLine()
                                                             .ignoreInvalidLines()
                                                             .types(String.class, String.class);
         
         // retrieve aircraft data from file: <tailnum, manufacturer, model>
-        DataSet<Tuple3<String, String, String>> aircraft = env.readCsvFile(localAircraftDataDir)
+        DataSet<Tuple3<String, String, String>> aircraft = env.readCsvFile(aircraftDataDir)
                                                             .includeFields("101010000")
                                                             .ignoreFirstLine()
                                                             .ignoreInvalidLines()
