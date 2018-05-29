@@ -1,7 +1,6 @@
 import org.apache.flink.api.common.functions.GroupReduceFunction;
 import org.apache.flink.api.common.functions.JoinFunction;
 import org.apache.flink.api.common.operators.Order;
-import org.apache.flink.api.java.DataSet;
 import org.apache.flink.api.java.ExecutionEnvironment;
 import org.apache.flink.api.java.operators.UnsortedGrouping;
 import org.apache.flink.api.java.tuple.Tuple1;
@@ -10,12 +9,15 @@ import org.apache.flink.api.java.tuple.Tuple3;
 import org.apache.flink.api.java.tuple.Tuple4;
 import org.apache.flink.api.java.tuple.Tuple5;
 import org.apache.flink.api.java.tuple.Tuple6;
+import org.apache.flink.api.java.DataSet;
 import org.apache.flink.util.Collector;
-import java.util.List;
-import java.util.ArrayList;
-import java.util.Date;
-import java.text.DateFormat;
+import org.apache.flink.util.FileUtils;
 import java.text.SimpleDateFormat;
+import java.text.DateFormat;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Date;
+import java.io.File;
 
 public class MostPopularAircraftTypes {
     public static void main(String[] args) throws Exception {
@@ -62,7 +64,7 @@ public class MostPopularAircraftTypes {
         
         // get all US airlines: <airline_code, airline_name>
         DataSet<Tuple2<String, String>> usAirline = airline.reduceGroup(new USAirlineReducer());
-        													  
+                                                              
 
 
         // join the result from "usAirline" and "flights" 
@@ -75,40 +77,37 @@ public class MostPopularAircraftTypes {
         // join the result from "airlineTailNumbers" and "aircraftDetails" 
         // to get airline tail numbers + aircraft details: <airline_name, tail_number, manufacturer, model> --- Not used yet!
         DataSet<Tuple4<String, String, String, String>> aircraftDetails = airlineTailNumbers.join(aircraft)
-																               .where(1)
-																               .equalTo(0)
-																               .with(new JoinALC()); // join airline and aircraft
+                                                                               .where(1)
+                                                                               .equalTo(0)
+                                                                               .with(new JoinALC()); // join airline and aircraft
         
         //Reduce dataset to create descending list of most used tailnumbers for each airline + count
         DataSet<Tuple5<String, String, String, String, Integer>> countResult = aircraftDetails.groupBy(1)// group the data by tailnumber 
-												                .reduceGroup(new AircraftCounter()) // for each group, apply the "GroupReduceFunction"
-												                	.sortPartition(0, Order.ASCENDING).setParallelism(1) // sort by airline (not working as it should be - creates several separately alphabetized groups instead of one big alphabetized groups)
-												                .sortPartition(2, Order.DESCENDING); // sort from most used tailnumber						
-        	
+                                                                .reduceGroup(new AircraftCounter()) // for each group, apply the "GroupReduceFunction"
+                                                                    .sortPartition(0, Order.ASCENDING).setParallelism(1) // sort by airline (not working as it should be - creates several separately alphabetized groups instead of one big alphabetized groups)
+                                                                .sortPartition(2, Order.DESCENDING); // sort from most used tailnumber						
+            
         //Apply reduction so that only the 5 most used tailnumbers for each airline is recorded
         DataSet<Tuple2<String, ArrayList<Tuple2<String, String>>>> reduceResult = countResult.reduceGroup(new AirlineReducer());
         
         //Print results
         List<Tuple2<String,ArrayList<Tuple2<String,String>>>> reduceResultList = new ArrayList<Tuple2<String,ArrayList<Tuple2<String,String>>>>(reduceResult.collect());
-        printResults(reduceResultList);
-        
-        
-
+        saveResultsToFile(reduceResultList);
     }
     
     public static class AircraftCounter implements GroupReduceFunction<Tuple4<String, String, String, String>, Tuple5<String, String, String, String, Integer>> {
         @Override
         public void reduce(Iterable<Tuple4<String, String, String, String>> records, Collector<Tuple5<String, String, String, String, Integer>> out) throws Exception {
-        		String airline = null;
+                String airline = null;
             String tailnumber = null;
             String manufacturer = null;
             String model = null;
             int cnt = 0;
             for (Tuple4<String, String, String, String> r : records) {
-            		airline = r.f0;
-            		tailnumber = r.f1;
-            		manufacturer = r.f2;
-            		model = r.f3;
+                    airline = r.f0;
+                    tailnumber = r.f1;
+                    manufacturer = r.f2;
+                    model = r.f3;
                 if (tailnumber.matches("N[a-zA-Z0-9]*")||tailnumber.matches("[a-zA-Z0-9]*9E")) cnt++;	
                 //Get rid of empty tailnumbers or tailnumbers which don't follow format of N____ or ____9E (not sure about whether ____9E should be included as it has no aircraft manufacturer/model info linked)
             }
@@ -139,43 +138,45 @@ public class MostPopularAircraftTypes {
             }
         }
     }
-    
+
     public static class AirlineReducer implements GroupReduceFunction<Tuple5<String, String, String, String, Integer>, Tuple2<String, ArrayList<Tuple2 <String, String>>>> {
         @Override
         public void reduce(Iterable<Tuple5<String, String, String, String, Integer>> records, Collector<Tuple2<String, ArrayList<Tuple2 <String, String>>>> out) throws Exception {
-        		String airlineName = "";
-        		ArrayList<Tuple2<String, String>> mostUsedList = new ArrayList<Tuple2<String, String>>();
-        		int counter = 0;		//Counter to limit output tuples to 5 per airline
+                String airlineName = "";
+                ArrayList<Tuple2<String, String>> mostUsedList = new ArrayList<Tuple2<String, String>>();
+                int counter = 0;		//Counter to limit output tuples to 5 per airline
             for (Tuple5<String, String, String, String, Integer> airline : records) {
-            		if (airlineName.equals("")) airlineName=airline.f0;
-            		if (counter==5) {
-            			if (airline.f0.equals(airlineName)) continue;
-            			else counter = 0;
-            			out.collect(new Tuple2<String, ArrayList<Tuple2<String, String>>>(airlineName,mostUsedList));
-            			mostUsedList.clear();
-            		}
-            		if (!airlineName.equals(airline.f0)) {
-            			counter=0;
-            			airlineName=airline.f0;
-            		}
-            		counter++;
-            		mostUsedList.add(new Tuple2<String, String>(airline.f2,airline.f3));
+                    if (airlineName.equals("")) airlineName=airline.f0;
+                    if (counter==5) {
+                        if (airline.f0.equals(airlineName)) continue;
+                        else counter = 0;
+                        out.collect(new Tuple2<String, ArrayList<Tuple2<String, String>>>(airlineName,mostUsedList));
+                        mostUsedList.clear();
+                    }
+                    if (!airlineName.equals(airline.f0)) {
+                        counter=0;
+                        airlineName=airline.f0;
+                    }
+                    counter++;
+                    mostUsedList.add(new Tuple2<String, String>(airline.f2,airline.f3));
             }
         }
     }
-    
-	public static void printResults(List<Tuple2<String, ArrayList<Tuple2<String, String>>>> results) throws Exception{
-		
-		System.out.println();
-		for (int i=0;i<results.size();i++) {
-			System.out.print(results.get(i).f0+"\t[");
-			for (int j=0;j<results.get(i).f1.size();j++) {
-				System.out.print(results.get(i).f1.get(j).f0+" "+results.get(i).f1.get(j).f1);
-				if (!(j==(results.get(i).f1.size())-1)) System.out.print(", ");
-			}
-			System.out.println("]");
-		}
-	}
-    	
+
+    public static void saveResultsToFile(List<Tuple2<String, ArrayList<Tuple2<String, String>>>> results) throws Exception{
+        File outputFile = new File("out.txt");
+        outputFile.createNewFile();
+        String outputString = "";
+        
+        for (int i = 0; i < results.size(); i++) {
+            outputString += results.get(i).f0+"\t[";
+            for (int j = 0; j < results.get(i).f1.size(); j++) {
+                outputString += results.get(i).f1.get(j).f0 + " " + results.get(i).f1.get(j).f1;
+                if (!(j == (results.get(i).f1.size())-1)) outputString += ", ";
+            }
+            outputString += "]\n";
+        }
+        FileUtils.writeFileUtf8(outputFile, outputString);
+    }
+
 }
-    

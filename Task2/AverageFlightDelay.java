@@ -1,18 +1,20 @@
 import org.apache.flink.api.common.functions.GroupReduceFunction;
 import org.apache.flink.api.common.functions.JoinFunction;
-import org.apache.flink.api.java.DataSet;
+import org.apache.flink.api.common.operators.Order;
 import org.apache.flink.api.java.ExecutionEnvironment;
 import org.apache.flink.api.java.tuple.Tuple2;
 import org.apache.flink.api.java.tuple.Tuple3;
 import org.apache.flink.api.java.tuple.Tuple4;
 import org.apache.flink.api.java.tuple.Tuple5;
 import org.apache.flink.api.java.tuple.Tuple6;
+import org.apache.flink.api.java.DataSet;
 import org.apache.flink.util.Collector;
-import org.apache.flink.api.common.operators.Order;
-import java.util.List;
-import java.util.Date;
-import java.text.DateFormat;
+import org.apache.flink.util.FileUtils;
 import java.text.SimpleDateFormat;
+import java.text.DateFormat;
+import java.util.Date;
+import java.util.List;
+import java.io.File;
 
 public class AverageFlightDelay {
     public static void main(String[] args) throws Exception {
@@ -64,6 +66,15 @@ public class AverageFlightDelay {
         DataSet<Tuple2<String, Double>> result = airlineFlightDelays.groupBy(0)
                                                                     .reduceGroup(new avgDelay())
                                                                     .sortPartition(1, Order.ASCENDING);
+
+        File outputFile = new File("out.txt");
+        outputFile.createNewFile();
+        String outputString = "";
+        List<Tuple2<String, Double>> resultTuples = result.collect();
+        for (int i = 0; i < resultTuples.size(); i++) {
+            outputString += resultTuples.get(i).getField(0) + "\t" + resultTuples.get(i).getField(1) + "\n";
+        }
+        FileUtils.writeFileUtf8(outputFile, outputString);
 
         // get top 3 results and print them
         result.print();
