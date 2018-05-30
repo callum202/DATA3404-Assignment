@@ -1,0 +1,1 @@
+scp /mnt/c/Users/hche8927/Documents/vm-shared-folder/data3404-workspace/DATA3404-Assignment/Task1/output.jar hche8927@soit-hdp-pro-22.ucc.usyd.edu.au:/home/hche8927/Documents/DATA3404-A1-jars/Task1

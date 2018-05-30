@@ -48,7 +48,6 @@ public class TopThreeAirports {
         DataSet<Tuple2<String, String>> yearReduceResult = flights.reduceGroup(new YearReducer(targetYear));
 
         // the result
-<<<<<<< HEAD
         DataSet<Tuple2<String, Integer>> topThreeResult = yearReduceResult.groupBy(1) // group the data by airport code
                                                                         .reduceGroup(new AirportCounter()) // for each group, apply the "GroupReduceFunction"
                                                                         .sortPartition(1, Order.DESCENDING) // sort by number of flights from reduction result
@@ -63,12 +62,6 @@ public class TopThreeAirports {
                 }
             }
         );
-=======
-        DataSet<Tuple2<String, Integer>> countResult = yearReduceResult.groupBy(1) // group the data by airport code
-                                                                    .reduceGroup(new AirportCounter()) // for each group, apply the "GroupReduceFunction"
-                                                                    .sortPartition(1, Order.DESCENDING).setParallelism(1); // sort by number of flights from reduction result
-        outputResults(countResult);
->>>>>>> 959e12b8bd104e3707e673cdf75fba7fdf934526
 
         // print results
         topThreeResult.print();
@@ -113,19 +106,7 @@ public class TopThreeAirports {
             out.collect(new Tuple2<>(airport, cnt));
         }
     }
-    
-    public static void outputResults (DataSet<Tuple2<String, Integer>> results) throws Exception {
-    	File outputFile = new File("/Users/callumvandenhoek/Google Drive/Uni/DATA3404/Assignment/Output/TopThreeAirports.txt");
-        outputFile.createNewFile();
-        String outputString = "";
-        List<Tuple2<String, Integer>> resultTuples = results.collect();
-        for (int i = 0; i < 3; i++) {
-            outputString += resultTuples.get(i).getField(0) + "\t" + resultTuples.get(i).getField(1) + "\n";
-        }
-        FileUtils.writeFileUtf8(outputFile, outputString);
-    }
 
-<<<<<<< HEAD
     // Utility funtion for saving local copy of the result
     public static void saveLocalResults(DataSet<Tuple2<String, Integer>> results, String outputFileName) throws Exception {
         File outputFile = new File(outputFileName);
@@ -138,6 +119,3 @@ public class TopThreeAirports {
         FileUtils.writeFileUtf8(outputFile, outputString);
     }
 }
-=======
-}
->>>>>>> 959e12b8bd104e3707e673cdf75fba7fdf934526
