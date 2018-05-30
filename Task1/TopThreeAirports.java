@@ -44,15 +44,7 @@ public class TopThreeAirports {
         DataSet<Tuple2<String, Integer>> countResult = yearReduceResult.groupBy(1) // group the data by airport code
                                                                     .reduceGroup(new AirportCounter()) // for each group, apply the "GroupReduceFunction"
                                                                     .sortPartition(1, Order.DESCENDING).setParallelism(1); // sort by number of flights from reduction result
-
-        File outputFile = new File("out.txt");
-        outputFile.createNewFile();
-        String outputString = "";
-        List<Tuple2<String, Integer>> resultTuples = countResult.collect();
-        for (int i = 0; i < 3; i++) {
-            outputString += resultTuples.get(i).getField(0) + "\t" + resultTuples.get(i).getField(1) + "\n";
-        }
-        FileUtils.writeFileUtf8(outputFile, outputString);
+        outputResults(countResult);
 
         // get top 3 results and print them
         countResult.first(3).print();
@@ -94,6 +86,17 @@ public class TopThreeAirports {
             }
             out.collect(new Tuple2<>(airport, cnt));
         }
+    }
+    
+    public static void outputResults (DataSet<Tuple2<String, Integer>> results) throws Exception {
+    	File outputFile = new File("/Users/callumvandenhoek/Google Drive/Uni/DATA3404/Assignment/Output/TopThreeAirports.txt");
+        outputFile.createNewFile();
+        String outputString = "";
+        List<Tuple2<String, Integer>> resultTuples = results.collect();
+        for (int i = 0; i < 3; i++) {
+            outputString += resultTuples.get(i).getField(0) + "\t" + resultTuples.get(i).getField(1) + "\n";
+        }
+        FileUtils.writeFileUtf8(outputFile, outputString);
     }
 
 }
