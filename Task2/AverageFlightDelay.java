@@ -67,14 +67,7 @@ public class AverageFlightDelay {
                                                                     .reduceGroup(new avgDelay())
                                                                     .sortPartition(0, Order.ASCENDING).setParallelism(1);
 
-        File outputFile = new File("out.txt");
-        outputFile.createNewFile();
-        String outputString = "";
-        List<Tuple2<String, Double>> resultTuples = result.collect();
-        for (int i = 0; i < resultTuples.size(); i++) {
-            outputString += resultTuples.get(i).getField(0) + "\t" + resultTuples.get(i).getField(1) + "\n";
-        }
-        FileUtils.writeFileUtf8(outputFile, outputString);
+        outputResults(result);
 
         // get top 3 results and print them
         result.print();
@@ -146,6 +139,18 @@ public class AverageFlightDelay {
 
             out.collect(new Tuple2<String, Double>(airport, totalDelay/cnt));
         }
+    }
+    
+    public static void outputResults(DataSet<Tuple2<String, Double>> result) throws Exception {
+
+        File outputFile = new File("/Users/callumvandenhoek/Google Drive/Uni/DATA3404/Assignment/Output/AverageFlightDelayOutput.txt");
+        outputFile.createNewFile();
+        String outputString = "";
+        List<Tuple2<String, Double>> resultTuples = result.collect();
+        for (int i = 0; i < resultTuples.size(); i++) {
+            outputString += resultTuples.get(i).getField(0) + "\t" + resultTuples.get(i).getField(1) + "\n";
+        }
+        FileUtils.writeFileUtf8(outputFile, outputString);
     }
 
 }
