@@ -11,11 +11,7 @@ import org.apache.flink.util.FileUtils;
 import org.apache.flink.api.common.operators.Order;
 import java.util.List;
 import java.util.ArrayList;
-import java.io.BufferedWriter;
 import java.io.File;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.nio.file.Paths;
 
 public class MostPopularAircraftTypes {
     public static void main(String[] args) throws Exception {
