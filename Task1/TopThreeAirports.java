@@ -1,6 +1,9 @@
+import org.apache.flink.runtime.fs.hdfs.HadoopFileSystem;
+import org.apache.flink.core.fs.FileSystem.WriteMode;
 import org.apache.flink.api.common.functions.GroupReduceFunction;
 import org.apache.flink.api.common.functions.JoinFunction;
 import org.apache.flink.api.common.operators.Order;
+import org.apache.flink.api.java.io.TextOutputFormat.TextFormatter;
 import org.apache.flink.api.java.ExecutionEnvironment;
 import org.apache.flink.api.java.tuple.Tuple2;
 import org.apache.flink.api.java.tuple.Tuple3;
@@ -15,46 +18,68 @@ import java.io.File;
 
 public class TopThreeAirports {
     public static void main(String[] args) throws Exception {
-        // default year
-        String targetYear = "1994";
-
-        // specify which year we want to retrieve
-        if (args.length == 1) {
-            targetYear = args[0];
-        }
-
         // obtain an execution environment
         ExecutionEnvironment env = ExecutionEnvironment.getExecutionEnvironment();
-        // use the local file, CHANGE this if needed
+
+        // default year
+        String targetYear = "1994";
+        // default output file name
+        String outputFileName = "result.txt";
+        // use the local file
         String localFlightDataDir = "/media/sf_vm-shared-folder/data3404-workspace/DATA3404-Assignment/assignment_data_files/ontimeperformance_flights_tiny.csv";
-        // use the file stored in hadoop, CHANGE this if needed
+        // use local hadoop file
         String flightDataDir = "hdfs://localhost:9000/user/hche8927/assignment-data/ontimeperformance_flights_tiny.csv";
+        
+        // specify year
+        if (args.length > 0) targetYear = args[0];
+        // specify hadoop file from server
+        if (args.length > 1) flightDataDir = "hdfs://soit-hdp-pro-1.ucc.usyd.edu.au/share/data3404/assignment/ontimeperformance_flights_" + args[1] + ".csv";
+        // specify output file name
+        if (args.length > 2) outputFileName = args[2] + ".txt";
 
         // retrieve data from file
-        DataSet<Tuple2<String, String>> flights = env.readCsvFile(flightDataDir)
-                                                    .includeFields("000110000000") // (date, airport_code)
-                                                    .ignoreFirstLine()
-                                                    .ignoreInvalidLines()
-                                                    .types(String.class, String.class); // specify type for each field
+        DataSet<Tuple3<String, String, String>> flights = env.readCsvFile(flightDataDir)
+                                                        .includeFields("000110000100") // (date, airport_code)
+                                                        .ignoreFirstLine()
+                                                        .ignoreInvalidLines()
+                                                        .types(String.class, String.class, String.class); // specify type for each field
 
         // filter out undesired tuples
         DataSet<Tuple2<String, String>> yearReduceResult = flights.reduceGroup(new YearReducer(targetYear));
 
         // the result
+<<<<<<< HEAD
+        DataSet<Tuple2<String, Integer>> topThreeResult = yearReduceResult.groupBy(1) // group the data by airport code
+                                                                        .reduceGroup(new AirportCounter()) // for each group, apply the "GroupReduceFunction"
+                                                                        .sortPartition(1, Order.DESCENDING) // sort by number of flights from reduction result
+                                                                        .setParallelism(1) // prevent incorrect order
+                                                                        .first(3); // get top 3 results
+
+        // store in hadoop
+        topThreeResult.writeAsFormattedText("hdfs://soit-hdp-pro-1.ucc.usyd.edu.au/user/hche8927/output/" + outputFileName, WriteMode.OVERWRITE,
+            new TextFormatter<Tuple2<String, Integer>>() {
+                public String format(Tuple2<String, Integer> t) {
+                    return t.f0 + "\t" + t.f1;
+                }
+            }
+        );
+=======
         DataSet<Tuple2<String, Integer>> countResult = yearReduceResult.groupBy(1) // group the data by airport code
                                                                     .reduceGroup(new AirportCounter()) // for each group, apply the "GroupReduceFunction"
                                                                     .sortPartition(1, Order.DESCENDING).setParallelism(1); // sort by number of flights from reduction result
         outputResults(countResult);
+>>>>>>> 959e12b8bd104e3707e673cdf75fba7fdf934526
 
-        // get top 3 results and print them
-        countResult.first(3).print();
+        // print results
+        topThreeResult.print();
+        // store locally
+        saveLocalResults(topThreeResult, outputFileName);
     }
 
-    // NOTE: GroupReduceFunction<type of input, type of output>
-    // in this case GroupReduceFunction<Tuple2<DATE, AIRLINE_CODE>, Tuple2<DATE, AIRLINE_CODE>>
+    // GroupReduceFunction<Tuple2<DATE, AIRLINE_CODE, DEPART_TIME>, Tuple2<DATE, AIRLINE_CODE>>
     //
     // Only return flight record from give year
-    public static class YearReducer implements GroupReduceFunction<Tuple2<String, String>, Tuple2<String, String>> {
+    public static class YearReducer implements GroupReduceFunction<Tuple3<String, String, String>, Tuple2<String, String>> {
         // target year
         private String year;
 
@@ -64,15 +89,16 @@ public class TopThreeAirports {
         }
 
         @Override
-        public void reduce(Iterable<Tuple2<String, String>> records, Collector<Tuple2<String, String>> out) throws Exception {
-            for (Tuple2<String, String> flight : records) {
+        public void reduce(Iterable<Tuple3<String, String, String>> records, Collector<Tuple2<String, String>> out) throws Exception {
+            for (Tuple3<String, String, String> flight : records) {
                 if (!flight.f0.contains(year)) continue;
-                out.collect(flight);
+                if (flight.f2.equals("")) continue;
+                out.collect(new Tuple2<String, String>(flight.f0, flight.f1));
             }
         }
     }
 
-    // NOTE: In this case GroupReduceFunction<Tuple2<DATE, AIRLINE_CODE>, Tuple2<AIRLINE_CODE, COUNTER>>
+    // GroupReduceFunction<Tuple2<DATE, AIRLINE_CODE>, Tuple2<AIRLINE_CODE, COUNTER>>
     //
     // Count number of records for each group (grouped by airline_code)
     public static class AirportCounter implements GroupReduceFunction<Tuple2<String, String>, Tuple2<String, Integer>> {
@@ -99,4 +125,19 @@ public class TopThreeAirports {
         FileUtils.writeFileUtf8(outputFile, outputString);
     }
 
+<<<<<<< HEAD
+    // Utility funtion for saving local copy of the result
+    public static void saveLocalResults(DataSet<Tuple2<String, Integer>> results, String outputFileName) throws Exception {
+        File outputFile = new File(outputFileName);
+        outputFile.createNewFile();
+        String outputString = "";
+        List<Tuple2<String, Integer>> resultTuples = results.collect();
+        for (Tuple2<String, Integer> t : resultTuples) {
+            outputString += t.getField(0) + "\t" + t.getField(1) + "\n";
+        }
+        FileUtils.writeFileUtf8(outputFile, outputString);
+    }
 }
+=======
+}
+>>>>>>> 959e12b8bd104e3707e673cdf75fba7fdf934526
