@@ -43,7 +43,7 @@ public class TopThreeAirports {
         // the result
         DataSet<Tuple2<String, Integer>> countResult = yearReduceResult.groupBy(1) // group the data by airport code
                                                                     .reduceGroup(new AirportCounter()) // for each group, apply the "GroupReduceFunction"
-                                                                    .sortPartition(1, Order.DESCENDING); // sort by number of flights from reduction result
+                                                                    .sortPartition(1, Order.DESCENDING).setParallelism(1); // sort by number of flights from reduction result
 
         File outputFile = new File("out.txt");
         outputFile.createNewFile();
