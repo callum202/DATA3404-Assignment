@@ -65,7 +65,7 @@ public class AverageFlightDelay {
         // the result
         DataSet<Tuple2<String, Double>> result = airlineFlightDelays.groupBy(0)
                                                                     .reduceGroup(new avgDelay())
-                                                                    .sortPartition(0, Order.ASCENDING);
+                                                                    .sortPartition(0, Order.ASCENDING).setParallelism(1);
 
         File outputFile = new File("out.txt");
         outputFile.createNewFile();
