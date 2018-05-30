@@ -1,7 +1,9 @@
 import org.apache.flink.api.common.functions.GroupReduceFunction;
+import org.apache.flink.core.fs.FileSystem.WriteMode;
 import org.apache.flink.api.common.functions.JoinFunction;
 import org.apache.flink.api.common.operators.Order;
 import org.apache.flink.api.java.ExecutionEnvironment;
+import org.apache.flink.api.java.io.TextOutputFormat.TextFormatter;
 import org.apache.flink.api.java.tuple.Tuple2;
 import org.apache.flink.api.java.tuple.Tuple3;
 import org.apache.flink.api.java.tuple.Tuple4;
@@ -18,22 +20,31 @@ import java.io.File;
 
 public class AverageFlightDelay {
     public static void main(String[] args) throws Exception {
-        // default year
-        String targetYear = "1994";
-
-        // specify which year we want to retrieve
-        if (args.length == 1) {
-            targetYear = args[0];
-        }
-
         // obtain an execution environment
         ExecutionEnvironment env = ExecutionEnvironment.getExecutionEnvironment();
 
-        String localAirlineDataDir = "/media/sf_vm-shared-folder/data3404-workspace/DATA3404-Assignment/assignment_data_files/ontimeperformance_airlines.csv";
-        String airlineDataDir = "hdfs://localhost:9000/user/hche8927/assignment-data/ontimeperformance_airlines.csv";
-
+        // default year
+        String targetYear = "1994";
+        // default output file name
+        String outputFileName = "result.txt";
+        
+        // use the local files
         String localFlightDataDir = "/media/sf_vm-shared-folder/data3404-workspace/DATA3404-Assignment/assignment_data_files/ontimeperformance_flights_tiny.csv";
+        // use local hadoop file
         String flightDataDir = "hdfs://localhost:9000/user/hche8927/assignment-data/ontimeperformance_flights_tiny.csv";
+        
+        // // String localAirlineDataDir = "/media/sf_vm-shared-folder/data3404-workspace/DATA3404-Assignment/assignment_data_files/ontimeperformance_airlines.csv";
+        // String airlineDataDir = "hdfs://localhost:9000/user/hche8927/assignment-data/ontimeperformance_airlines.csv";
+        
+        // use hadoop from cluster
+        String airlineDataDir = "hdfs://soit-hdp-pro-1.ucc.usyd.edu.au/share/data3404/assignment/ontimeperformance_airlines.csv";
+
+        // specify year
+        if (args.length > 0) targetYear = args[0];
+        // specify hadoop file from server
+        if (args.length > 1) flightDataDir = "hdfs://soit-hdp-pro-1.ucc.usyd.edu.au/share/data3404/assignment/ontimeperformance_flights_" + args[1] + ".csv";
+        // specify output file name
+        if (args.length > 2) outputFileName = args[2] + ".txt";
 
         // retrieve flight data from file: <airline_code, airline_name, airline_country>
         DataSet<Tuple3<String, String, String>> airline = env.readCsvFile(airlineDataDir)
@@ -67,7 +78,17 @@ public class AverageFlightDelay {
                                                                     .reduceGroup(new avgDelay())
                                                                     .sortPartition(0, Order.ASCENDING).setParallelism(1);
 
-        outputResults(result);
+        // store in hadoop cluster
+        result.writeAsFormattedText("hdfs://soit-hdp-pro-1.ucc.usyd.edu.au/user/hche8927/output-t2/" + outputFileName, WriteMode.OVERWRITE,
+            new TextFormatter<Tuple2<String, Double>>() {
+                public String format(Tuple2<String, Double> t) {
+                    return t.f0 + "\t" + t.f1;
+                }
+            }
+        );
+
+        // save to local
+        outputResults(result, outputFileName);
 
         // get top 3 results and print them
         result.print();
@@ -141,14 +162,13 @@ public class AverageFlightDelay {
         }
     }
     
-    public static void outputResults(DataSet<Tuple2<String, Double>> result) throws Exception {
-
-        File outputFile = new File("/Users/callumvandenhoek/Google Drive/Uni/DATA3404/Assignment/Output/AverageFlightDelayOutput.txt");
+    public static void outputResults(DataSet<Tuple2<String, Double>> result, String outputFileName) throws Exception {
+        File outputFile = new File(outputFileName);
         outputFile.createNewFile();
         String outputString = "";
         List<Tuple2<String, Double>> resultTuples = result.collect();
-        for (int i = 0; i < resultTuples.size(); i++) {
-            outputString += resultTuples.get(i).getField(0) + "\t" + resultTuples.get(i).getField(1) + "\n";
+        for (Tuple2<String, Double> t : resultTuples) {
+            outputString += t.getField(0) + "\t" + t.getField(1) + "\n";
         }
         FileUtils.writeFileUtf8(outputFile, outputString);
     }
