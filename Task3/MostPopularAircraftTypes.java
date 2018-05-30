@@ -35,7 +35,7 @@ public class MostPopularAircraftTypes {
         DataSet<Tuple3<String, String, String>> airlines = env.readCsvFile(localAirlineDataDir)
                                                         .includeFields("111")
                                                         .ignoreFirstLine()
-                                                        .ignoreInvalidLines()
+                                                        .ignoreInvalidLines() 
                                                         .types(String.class,String.class, String.class);
 
         // retrieve flight data from file: <airline_code, tail_number>
