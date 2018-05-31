@@ -1,11 +1,10 @@
 #!/bin/bash
 
 #run ./scp build [Task Number] to run the build script.
-#CHANGE LINE 8 TO REFLECT YOUR FOLDER SYSTEM
 if [ $1 == "build" ]
 then
   task=$2
-  cd Task\ $task
+  cd Task\ $task #CHANGE THIS LINE TO REFLECT YOUR FOLDER SYSTEM
   ./build.sh
 
 #run ./scp [unikey] scp to transfer this script to the ssh
