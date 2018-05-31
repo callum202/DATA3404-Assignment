@@ -99,7 +99,7 @@ public class MostPopularAircraftTypes {
         // output file path
         String outPutDir = "hdfs://soit-hdp-pro-1.ucc.usyd.edu.au/user/hche8927/output-t3/" + outputFileName;
         // use specified unikey
-        if (args.length > 3) outPutDir = "hdfs://soit-hdp-pro-1.ucc.usyd.edu.au/user/" + args[3] + "/output-t3/" + outputFileName;
+        if (args.length > 2) outPutDir = "hdfs://soit-hdp-pro-1.ucc.usyd.edu.au/user/" + args[2] + "/output-t3/" + outputFileName;
 
         // store in hadoop cluster
         aircraftUsedCountFive.writeAsFormattedText(outPutDir, WriteMode.OVERWRITE,
