@@ -8,7 +8,7 @@ then
   cd Task\ $task
   ./build.sh
 
-#run ./scp [unikey] scp to transfer this script to the ssh
+#run ./scp scp [unikey] to transfer this script to the ssh
 elif [ $1 == "scp" ]
 then
   scp scp.sh $2@soit-hdp-pro-14.ucc.usyd.edu.au:/home/$2/
