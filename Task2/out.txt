@@ -1,8 +1,0 @@
-Northwest Airlines Inc.	980240.6417112299
-Southwest Airlines Co.	1009052.9247910863
-Delta Air Lines Inc.	1081732.6203208556
-Alaska Airlines Inc.	1105644.171779141
-US Airways	1106482.939632546
-United Airlines	1110694.9806949806
-American Airlines Inc.	1168346.8208092486
-Continental Air Lines Inc.	1345057.6923076923

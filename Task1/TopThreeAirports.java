@@ -21,15 +21,16 @@ public class TopThreeAirports {
         // obtain an execution environment
         ExecutionEnvironment env = ExecutionEnvironment.getExecutionEnvironment();
 
+        // String localFlightDataDir = "/media/sf_vm-shared-folder/data3404-workspace/DATA3404-Assignment/assignment_data_files/ontimeperformance_flights_tiny.csv";
+        // String flightDataDir = "hdfs://localhost:9000/user/hche8927/assignment-data/ontimeperformance_flights_tiny.csv";
+
         // default year
         String targetYear = "1994";
         // default output file name
         String outputFileName = "result.txt";
-        // use the local file
-        String localFlightDataDir = "/media/sf_vm-shared-folder/data3404-workspace/DATA3404-Assignment/assignment_data_files/ontimeperformance_flights_tiny.csv";
-        // use local hadoop file
-        String flightDataDir = "hdfs://localhost:9000/user/hche8927/assignment-data/ontimeperformance_flights_tiny.csv";
-        
+        // load file from cluster
+        String flightDataDir = "hdfs://soit-hdp-pro-1.ucc.usyd.edu.au/share/data3404/assignment/ontimeperformance_flights_tiny.csv";
+
         // specify year
         if (args.length > 0) targetYear = args[0];
         // specify hadoop file from server
@@ -38,35 +39,41 @@ public class TopThreeAirports {
         if (args.length > 2) outputFileName = args[2] + ".txt";
 
         // retrieve data from file
-        DataSet<Tuple3<String, String, String>> flights = env.readCsvFile(flightDataDir)
-                                                        .includeFields("000110000100") // (date, airport_code)
-                                                        .ignoreFirstLine()
-                                                        .ignoreInvalidLines()
-                                                        .types(String.class, String.class, String.class); // specify type for each field
+        DataSet<Tuple3<String, String, String>> flights
+            = env.readCsvFile(flightDataDir)
+              .includeFields("000110000100") // (date, airport_code)
+              .ignoreFirstLine()
+              .ignoreInvalidLines()
+              .types(String.class, String.class, String.class); // specify type for each field
 
         // filter out undesired tuples
         DataSet<Tuple2<String, String>> yearReduceResult = flights.reduceGroup(new YearReducer(targetYear));
 
         // the result
-        DataSet<Tuple2<String, Integer>> topThreeResult = yearReduceResult.groupBy(1) // group the data by airport code
-                                                                        .reduceGroup(new AirportCounter()) // for each group, apply the "GroupReduceFunction"
-                                                                        .sortPartition(1, Order.DESCENDING) // sort by number of flights from reduction result
-                                                                        .setParallelism(1) // prevent incorrect order
-                                                                        .first(3); // get top 3 results
+        DataSet<Tuple2<String, Integer>> topThreeResult
+            = yearReduceResult.groupBy(1) // group the data by airport code
+              .reduceGroup(new AirportCounter()) // for each group, apply the "GroupReduceFunction"
+              .sortPartition(1, Order.DESCENDING).setParallelism(1) // sort by number of flights from reduction result
+              .first(3); // get top 3 results
+
+        // output file path
+        String outPutDir = "hdfs://soit-hdp-pro-1.ucc.usyd.edu.au/user/hche8927/output-t1/" + outputFileName;
+        // use specified unikey
+        if (args.length > 3) outPutDir = "hdfs://soit-hdp-pro-1.ucc.usyd.edu.au/user/" + args[3] + "/output-t1/" + outputFileName;
 
         // store in hadoop
-        topThreeResult.writeAsFormattedText("hdfs://soit-hdp-pro-1.ucc.usyd.edu.au/user/hche8927/output/" + outputFileName, WriteMode.OVERWRITE,
-            new TextFormatter<Tuple2<String, Integer>>() {
-                public String format(Tuple2<String, Integer> t) {
-                    return t.f0 + "\t" + t.f1;
-                }
+        topThreeResult.writeAsFormattedText(outPutDir, WriteMode.OVERWRITE,
+        new TextFormatter<Tuple2<String, Integer>>() {
+            public String format(Tuple2<String, Integer> t) {
+                return t.f0 + "\t" + t.f1;
             }
-        );
+        });
+
+        // save to local
+        saveLocalResults(topThreeResult, outputFileName);
 
         // print results
-        topThreeResult.print();
-        // store locally
-        saveLocalResults(topThreeResult, outputFileName);
+        // topThreeResult.print();
     }
 
     // GroupReduceFunction<Tuple2<DATE, AIRLINE_CODE, DEPART_TIME>, Tuple2<DATE, AIRLINE_CODE>>

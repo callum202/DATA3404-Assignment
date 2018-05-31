@@ -23,20 +23,17 @@ public class AverageFlightDelay {
         // obtain an execution environment
         ExecutionEnvironment env = ExecutionEnvironment.getExecutionEnvironment();
 
+        // String localFlightDataDir = "/media/sf_vm-shared-folder/data3404-workspace/DATA3404-Assignment/assignment_data_files/ontimeperformance_flights_tiny.csv";
+        // String flightDataDir = "hdfs://localhost:9000/user/hche8927/assignment-data/ontimeperformance_flights_tiny.csv";
+        // String localAirlineDataDir = "/media/sf_vm-shared-folder/data3404-workspace/DATA3404-Assignment/assignment_data_files/ontimeperformance_airlines.csv";
+        // String airlineDataDir = "hdfs://localhost:9000/user/hche8927/assignment-data/ontimeperformance_airlines.csv";
+
         // default year
         String targetYear = "1994";
         // default output file name
         String outputFileName = "result.txt";
-        
-        // use the local files
-        String localFlightDataDir = "/media/sf_vm-shared-folder/data3404-workspace/DATA3404-Assignment/assignment_data_files/ontimeperformance_flights_tiny.csv";
-        // use local hadoop file
-        String flightDataDir = "hdfs://localhost:9000/user/hche8927/assignment-data/ontimeperformance_flights_tiny.csv";
-        
-        // // String localAirlineDataDir = "/media/sf_vm-shared-folder/data3404-workspace/DATA3404-Assignment/assignment_data_files/ontimeperformance_airlines.csv";
-        // String airlineDataDir = "hdfs://localhost:9000/user/hche8927/assignment-data/ontimeperformance_airlines.csv";
-        
-        // use hadoop from cluster
+        // load files from cluster
+        String flightDataDir = "hdfs://soit-hdp-pro-1.ucc.usyd.edu.au/share/data3404/assignment/ontimeperformance_flights_tiny.csv";
         String airlineDataDir = "hdfs://soit-hdp-pro-1.ucc.usyd.edu.au/share/data3404/assignment/ontimeperformance_airlines.csv";
 
         // specify year
@@ -47,18 +44,20 @@ public class AverageFlightDelay {
         if (args.length > 2) outputFileName = args[2] + ".txt";
 
         // retrieve flight data from file: <airline_code, airline_name, airline_country>
-        DataSet<Tuple3<String, String, String>> airline = env.readCsvFile(airlineDataDir)
-                                                        .includeFields("111")
-                                                        .ignoreFirstLine()
-                                                        .ignoreInvalidLines()
-                                                        .types(String.class, String.class, String.class);
+        DataSet<Tuple3<String, String, String>> airline
+            = env.readCsvFile(airlineDataDir)
+              .includeFields("111")
+              .ignoreFirstLine()
+              .ignoreInvalidLines()
+              .types(String.class, String.class, String.class);
 
         // retrieve airpots data from file: <airline_code, flight_date, expect_depart, actual_depart>
-        DataSet<Tuple6<String, String, String, String, String, String>> flights = env.readCsvFile(flightDataDir)
-                                                            .includeFields("010100011110")
-                                                            .ignoreFirstLine()
-                                                            .ignoreInvalidLines()
-                                                            .types(String.class, String.class, String.class, String.class, String.class, String.class);
+        DataSet<Tuple6<String, String, String, String, String, String>> flights
+            = env.readCsvFile(flightDataDir)
+              .includeFields("010100011110")
+              .ignoreFirstLine()
+              .ignoreInvalidLines()
+              .types(String.class, String.class, String.class, String.class, String.class, String.class);
 
         // get all US airlines: <airline_code, airline_name>
         DataSet<Tuple2<String, String>> usAirline = airline.reduceGroup(new USAirlineReducer());
@@ -66,32 +65,36 @@ public class AverageFlightDelay {
         // get all flight delays: <airline_code, delay>
         DataSet<Tuple2<String, Double>> flightDelays = flights.reduceGroup(new YearDelayReducer(targetYear));
 
-        // join the result from "usAirline" and "flightDelays" 
+        // join the result from "usAirline" and "flightDelays"
         // to get airline flight delays: <airline_code, airline_name, delay>
         DataSet<Tuple3<String, String, Double>> airlineFlightDelays = usAirline.join(flightDelays)
-                                                                                .where(0)
-                                                                                .equalTo(0)
-                                                                                .with(new JoinALF()); // join airline and flight
+                .where(0)
+                .equalTo(0)
+                .with(new JoinALF()); // join airline and flight
 
         // the result
         DataSet<Tuple2<String, Double>> result = airlineFlightDelays.groupBy(0)
-                                                                    .reduceGroup(new avgDelay())
-                                                                    .sortPartition(0, Order.ASCENDING).setParallelism(1);
+                .reduceGroup(new avgDelay())
+                .sortPartition(0, Order.ASCENDING).setParallelism(1);
+
+        // output file path
+        String outPutDir = "hdfs://soit-hdp-pro-1.ucc.usyd.edu.au/user/hche8927/output-t2/" + outputFileName;
+        // use specified unikey
+        if (args.length > 3) outPutDir = "hdfs://soit-hdp-pro-1.ucc.usyd.edu.au/user/" + args[3] + "/output-t2/" + outputFileName;
 
         // store in hadoop cluster
-        result.writeAsFormattedText("hdfs://soit-hdp-pro-1.ucc.usyd.edu.au/user/hche8927/output-t2/" + outputFileName, WriteMode.OVERWRITE,
-            new TextFormatter<Tuple2<String, Double>>() {
-                public String format(Tuple2<String, Double> t) {
-                    return t.f0 + "\t" + t.f1;
-                }
+        result.writeAsFormattedText(outPutDir, WriteMode.OVERWRITE,
+        new TextFormatter<Tuple2<String, Double>>() {
+            public String format(Tuple2<String, Double> t) {
+                return t.f0 + "\t" + t.f1;
             }
-        );
+        });
 
         // save to local
         outputResults(result, outputFileName);
 
         // get top 3 results and print them
-        result.print();
+        // result.print();
     }
 
     private static class JoinALF implements JoinFunction<Tuple2<String, String>, Tuple2<String, Double>, Tuple3<String, String, Double>> {
@@ -105,7 +108,7 @@ public class AverageFlightDelay {
         @Override
         public void reduce(Iterable<Tuple3<String, String, String>> records, Collector<Tuple2<String, String>> out) throws Exception {
             for (Tuple3<String, String, String> airline : records) {
-                if (!"United States".equals(airline.f2)) continue;
+                if (!airline.f2.equals("United States")) continue;
                 out.collect(new Tuple2<String, String>(airline.f0, airline.f1));
             }
         }
@@ -158,10 +161,10 @@ public class AverageFlightDelay {
                 cnt++;
             }
 
-            out.collect(new Tuple2<String, Double>(airport, totalDelay/cnt));
+            out.collect(new Tuple2<String, Double>(airport, totalDelay / cnt / 60000.0));
         }
     }
-    
+
     public static void outputResults(DataSet<Tuple2<String, Double>> result, String outputFileName) throws Exception {
         File outputFile = new File(outputFileName);
         outputFile.createNewFile();
