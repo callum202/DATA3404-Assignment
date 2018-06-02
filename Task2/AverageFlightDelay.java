@@ -23,9 +23,9 @@ public class AverageFlightDelay {
         // obtain an execution environment
         ExecutionEnvironment env = ExecutionEnvironment.getExecutionEnvironment();
 
-        // String localFlightDataDir = "/media/sf_vm-shared-folder/data3404-workspace/DATA3404-Assignment/assignment_data_files/ontimeperformance_flights_tiny.csv";
+        String localFlightDataDir = "/media/sf_vm-shared-folder/data3404-workspace/assignment_data_files/ontimeperformance_flights_medium.csv";
         // String flightDataDir = "hdfs://localhost:9000/user/hche8927/assignment-data/ontimeperformance_flights_tiny.csv";
-        // String localAirlineDataDir = "/media/sf_vm-shared-folder/data3404-workspace/DATA3404-Assignment/assignment_data_files/ontimeperformance_airlines.csv";
+        String localAirlineDataDir = "/media/sf_vm-shared-folder/data3404-workspace/assignment_data_files/ontimeperformance_airlines.csv";
         // String airlineDataDir = "hdfs://localhost:9000/user/hche8927/assignment-data/ontimeperformance_airlines.csv";
 
         // default year
@@ -45,7 +45,7 @@ public class AverageFlightDelay {
 
         // retrieve flight data from file: <airline_code, airline_name, airline_country>
         DataSet<Tuple3<String, String, String>> airline
-            = env.readCsvFile(airlineDataDir)
+            = env.readCsvFile(localAirlineDataDir)
               .includeFields("111")
               .ignoreFirstLine()
               .ignoreInvalidLines()
@@ -53,7 +53,7 @@ public class AverageFlightDelay {
 
         // retrieve airpots data from file: <airline_code, flight_date, expect_depart, actual_depart>
         DataSet<Tuple6<String, String, String, String, String, String>> flights
-            = env.readCsvFile(flightDataDir)
+            = env.readCsvFile(localFlightDataDir)
               .includeFields("010100011110")
               .ignoreFirstLine()
               .ignoreInvalidLines()
@@ -83,12 +83,12 @@ public class AverageFlightDelay {
         if (args.length > 3) outPutDir = "hdfs://soit-hdp-pro-1.ucc.usyd.edu.au/user/" + args[3] + "/output-t2/" + outputFileName;
 
         // store in hadoop cluster
-        result.writeAsFormattedText(outPutDir, WriteMode.OVERWRITE,
-        new TextFormatter<Tuple2<String, Double>>() {
-            public String format(Tuple2<String, Double> t) {
-                return t.f0 + "\t" + t.f1;
-            }
-        });
+        // result.writeAsFormattedText(outPutDir, WriteMode.OVERWRITE,
+        // new TextFormatter<Tuple2<String, Double>>() {
+        //     public String format(Tuple2<String, Double> t) {
+        //         return t.f0 + "\t" + t.f1;
+        //     }
+        // });
 
         // save to local
         outputResults(result, outputFileName);
