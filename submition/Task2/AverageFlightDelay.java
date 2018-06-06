@@ -22,35 +22,42 @@ public class AverageFlightDelay {
     public static void main(String[] args) throws Exception {
 
         // README!
-        // This program takes 4 optional arguments. These are as follows:
-        //   [yearToSearch] (will default to 1994 if empty)
-        //   [outputFileName] (default: result.txt)
-        //   [flightDirectory] (to specify which flights file - tiny, small, etc. Default: ontimeperformance_flights_tiny)
-        //   [outputDirectory] (to specify user directory in cluster to output to. Default: hdfs://soit-hdp-pro-1.ucc.usyd.edu.au/user/hche8927/output-t2/)
-        
+        // This program takes 1 mandatory argument and 3 optional arguments. These must be in the order [outputDirectory] [yearToSearch] [flightDirectory] [outputFileName]
+        //   [outputDirectory] Specifies user directory in cluster to output to. THIS ARGUMENT IS REQUIRED!
+        //   [yearToSearch]    Specifies year to search. Default: 1994.
+        //   [flightDirectory] Specify which flights file to use - tiny, small, etc. Default: ontimeperformance_flights_tiny).
+        //   [outputFileName]  Specifies name of output file. Default: result.txt
+
         // obtain an execution environment
         ExecutionEnvironment env = ExecutionEnvironment.getExecutionEnvironment();
 
-        String localFlightDataDir = "/media/sf_vm-shared-folder/data3404-workspace/assignment_data_files/ontimeperformance_flights_medium.csv";
-        // String flightDataDir = "hdfs://localhost:9000/user/hche8927/assignment-data/ontimeperformance_flights_tiny.csv";
-        String localAirlineDataDir = "/media/sf_vm-shared-folder/data3404-workspace/assignment_data_files/ontimeperformance_airlines.csv";
-        // String airlineDataDir = "hdfs://localhost:9000/user/hche8927/assignment-data/ontimeperformance_airlines.csv";
-
+        // get airline list
+        String airlineDataDir = "hdfs://soit-hdp-pro-1.ucc.usyd.edu.au/share/data3404/assignment/ontimeperformance_airlines.csv";
         // default year
         String targetYear = "1994";
         // default output file name
         String outputFileName = "result.txt";
-        // load files from cluster
+        // default file from cluster
         String flightDataDir = "hdfs://soit-hdp-pro-1.ucc.usyd.edu.au/share/data3404/assignment/ontimeperformance_flights_tiny.csv";
-        String airlineDataDir = "hdfs://soit-hdp-pro-1.ucc.usyd.edu.au/share/data3404/assignment/ontimeperformance_airlines.csv";
 
-        // specify year
-        if (args.length > 0) targetYear = args[0];
-        // specify hadoop file from server
-        if (args.length > 1) flightDataDir = "hdfs://soit-hdp-pro-1.ucc.usyd.edu.au/share/data3404/assignment/ontimeperformance_flights_" + args[1] + ".csv";
+        String outputDir = "";
+
+        // program will not run if no argument for unikey is entered.
+        if (args.length == 0) {
+          System.out.println("\n \n \n \n ############### ERROR: Unikey for output must be specified in program arguments. ######################\n\n\n\n");
+          System.exit(0);
+        }
+        // specify unikey for user - the output will be put in their directory in the cluster.
+        if (args.length >= 1) outputDir = "hdfs://soit-hdp-pro-1.ucc.usyd.edu.au/user/" + args[0] + "/output-t2/" + outputFileName;
+        // specify year to search
+        if (args.length >= 2) targetYear = args[1];
+        // specify flights file to use (from hadoop cluster)
+        if (args.length >= 3) flightDataDir = "hdfs://soit-hdp-pro-1.ucc.usyd.edu.au/share/data3404/assignment/ontimeperformance_flights_" + args[2] + ".csv";
         // specify output file name
-        if (args.length > 2) outputFileName = args[2] + ".txt";
-
+        if (args.length == 4) {
+          outputFileName = args[3] + ".txt";
+          outputDir = "hdfs://soit-hdp-pro-1.ucc.usyd.edu.au/user/" + args[0] + "/output-t2/" + outputFileName;
+        }
         // retrieve flight data from file: <airline_code, airline_name, airline_country>
         DataSet<Tuple3<String, String, String>> airline
             = env.readCsvFile(airlineDataDir)
@@ -85,13 +92,8 @@ public class AverageFlightDelay {
                 .reduceGroup(new avgDelay())
                 .sortPartition(0, Order.ASCENDING).setParallelism(1);
 
-        // output file path
-        String outPutDir = "hdfs://soit-hdp-pro-1.ucc.usyd.edu.au/user/hche8927/output-t2/" + outputFileName;
-        // use specified unikey
-        if (args.length > 3) outPutDir = "hdfs://soit-hdp-pro-1.ucc.usyd.edu.au/user/" + args[3] + "/output-t2/" + outputFileName;
-
         //store in hadoop cluster
-        result.writeAsFormattedText(outPutDir, WriteMode.OVERWRITE,
+        result.writeAsFormattedText(outputDir, WriteMode.OVERWRITE,
         new TextFormatter<Tuple2<String, Double>>() {
             public String format(Tuple2<String, Double> t) {
                 return t.f0 + "\t" + t.f1;
