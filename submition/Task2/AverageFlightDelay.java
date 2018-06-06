@@ -20,6 +20,14 @@ import java.io.File;
 
 public class AverageFlightDelay {
     public static void main(String[] args) throws Exception {
+
+        // README!
+        // This program takes 4 optional arguments. These are as follows:
+        //   [yearToSearch] (will default to 1994 if empty)
+        //   [outputFileName] (default: result.txt)
+        //   [flightDirectory] (to specify which flights file - tiny, small, etc. Default: ontimeperformance_flights_tiny)
+        //   [outputDirectory] (to specify user directory in cluster to output to. Default: hdfs://soit-hdp-pro-1.ucc.usyd.edu.au/user/hche8927/output-t2/)
+        
         // obtain an execution environment
         ExecutionEnvironment env = ExecutionEnvironment.getExecutionEnvironment();
 
@@ -45,7 +53,7 @@ public class AverageFlightDelay {
 
         // retrieve flight data from file: <airline_code, airline_name, airline_country>
         DataSet<Tuple3<String, String, String>> airline
-            = env.readCsvFile(localAirlineDataDir)
+            = env.readCsvFile(airlineDataDir)
               .includeFields("111")
               .ignoreFirstLine()
               .ignoreInvalidLines()
@@ -53,7 +61,7 @@ public class AverageFlightDelay {
 
         // retrieve airpots data from file: <airline_code, flight_date, expect_depart, actual_depart>
         DataSet<Tuple6<String, String, String, String, String, String>> flights
-            = env.readCsvFile(localFlightDataDir)
+            = env.readCsvFile(flightDataDir)
               .includeFields("010100011110")
               .ignoreFirstLine()
               .ignoreInvalidLines()
@@ -82,13 +90,13 @@ public class AverageFlightDelay {
         // use specified unikey
         if (args.length > 3) outPutDir = "hdfs://soit-hdp-pro-1.ucc.usyd.edu.au/user/" + args[3] + "/output-t2/" + outputFileName;
 
-        // store in hadoop cluster
-        // result.writeAsFormattedText(outPutDir, WriteMode.OVERWRITE,
-        // new TextFormatter<Tuple2<String, Double>>() {
-        //     public String format(Tuple2<String, Double> t) {
-        //         return t.f0 + "\t" + t.f1;
-        //     }
-        // });
+        //store in hadoop cluster
+        result.writeAsFormattedText(outPutDir, WriteMode.OVERWRITE,
+        new TextFormatter<Tuple2<String, Double>>() {
+            public String format(Tuple2<String, Double> t) {
+                return t.f0 + "\t" + t.f1;
+            }
+        });
 
         // save to local
         outputResults(result, outputFileName);
