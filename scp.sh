@@ -38,53 +38,12 @@ else
   arg1=$3
   arg2=$4
   arg3=$5
-  bad="false";
-  # if [ $# != 3 ]
-  # then
-  #   if [ $arg2 == "bad" ] || [ $arg3 == "bad" ]
-  #   then
-  #     bad=true
-  #   else
-  #     bad=false
-  #   fi
-  # fi
+
   case $task in
-    1) if [ $bad = true ]
-      then
-        class="TopThreeAirportsBad"
-      else
-        class="TopThreeAirports"
-      fi ;;
-    2) if [ $bad = true ]
-        then
-          class="AverageFlightDelayBad"
-        else
-          class="AverageFlightDelay"
-        fi ;;
-    3) if [ $bad = true ]
-        then
-          class="MostPopularAircraftTypesBad"
-        else
-          class="MostPopularAircraftTypes"
-        fi ;;
+    1) class="TopThreeAirports";;
+    2) class="AverageFlightDelay";;
+    3) class="MostPopularAircraftTypes";;
   esac
-
-
-  if [ "$#" -eq 3 ]
-  then
-    $FLINK_HOME/bin/flink run -m yarn-cluster -yn 2 --class $class output$task.jar $arg0 $class"("$arg0")" $arg1
-  elif [ "$#" -eq 4 ]
-  then
-    if [ $task -eq 3 ]
-    then
-      $FLINK_HOME/bin/flink run -m yarn-cluster -yn 2 --class $class output$task.jar $arg0 $arg2 $arg1
-    else
-      $FLINK_HOME/bin/flink run -m yarn-cluster -yn 2 --class $class output$task.jar $arg0 $arg1 $class"("$arg1")" $arg2
-    fi
-  elif [ "$#" -eq 5 ]
-  then
-    $FLINK_HOME/bin/flink run -m yarn-cluster -yn 2 --class $class output$task.jar $arg0 $arg1 $arg3 $arg2
-  else
-    exit
-  fi
+  
+  $FLINK_HOME/bin/flink run -m yarn-cluster -yn 2 --class $class output$task.jar $arg0 $arg1 $arg2 $arg3
 fi

@@ -20,10 +20,10 @@ public class MostPopularAircraftTypes {
     public static void main(String[] args) throws Exception {
 
         // README!
-        // This program takes 3 optional arguments. These are as follows: 
-        //   [outputFileName] (default: result.txt)
-        //   [flightDirectory] (to specify which flights file - tiny, small, etc. Default: ontimeperformance_flights_tiny)
-        //   [outputDirectory] (to specify user directory in cluster to output to. Default: hdfs://soit-hdp-pro-1.ucc.usyd.edu.au/user/hche8927/output-t2/)
+        // This program takes 1 mandatory argument and 2 optional arguments. These must be in the order [outputDirectory] [flightDirectory] [outputFileName]
+        //   [outputDirectory] Specifies user directory in cluster to output to. THIS ARGUMENT IS REQUIRED!
+        //   [flightDirectory] Specify which flights file to use - tiny, small, etc. Default: ontimeperformance_flights_tiny).
+        //   [outputFileName]  Specifies name of output file. Default: result.txt
 
         // obtain an execution environment
         ExecutionEnvironment env = ExecutionEnvironment.getExecutionEnvironment();
@@ -40,12 +40,22 @@ public class MostPopularAircraftTypes {
         String flightDataDir = "hdfs://soit-hdp-pro-1.ucc.usyd.edu.au/share/data3404/assignment/ontimeperformance_flights_tiny.csv";
         String airlineDataDir = "hdfs://soit-hdp-pro-1.ucc.usyd.edu.au/share/data3404/assignment/ontimeperformance_airlines.csv";
         String aircraftDataDir = "hdfs://soit-hdp-pro-1.ucc.usyd.edu.au/share/data3404/assignment/ontimeperformance_aircrafts.csv";
+        String outputDir = "";
 
-        // specify hadoop file from server
-        if (args.length > 0) flightDataDir = "hdfs://soit-hdp-pro-1.ucc.usyd.edu.au/share/data3404/assignment/ontimeperformance_flights_" + args[0] + ".csv";
+        // program will not run if no argument for unikey is entered.
+        if (args.length == 0) {
+          System.out.println("\n \n \n \n ############### ERROR: Unikey for output must be specified in program arguments. ######################\n\n\n\n");
+          System.exit(0);
+        }
+        // specify unikey for user - the output will be put in their directory in the cluster.
+        if (args.length >= 1) outputDir = "hdfs://soit-hdp-pro-1.ucc.usyd.edu.au/user/" + args[0] + "/output-t3/" + outputFileName;
+        // specify flights file to use (from hadoop cluster)
+        if (args.length >= 2) flightDataDir = "hdfs://soit-hdp-pro-1.ucc.usyd.edu.au/share/data3404/assignment/ontimeperformance_flights_" + args[1] + ".csv";
         // specify output file name
-        if (args.length > 1) outputFileName = args[1] + ".txt";
-
+        if (args.length == 3) {
+          outputFileName = args[2] + ".txt";
+          outputDir = "hdfs://soit-hdp-pro-1.ucc.usyd.edu.au/user/" + args[0] + "/output-t3/" + outputFileName;
+        }
         // retrieve airline data from file: <airline_code, airline_name, country>
         DataSet<Tuple3<String, String, String>> airlines
             = env.readCsvFile(airlineDataDir)
@@ -103,13 +113,8 @@ public class MostPopularAircraftTypes {
         //Creates new data set of Tuples with fields: <airline_name, ArrayList <Tuple<manufacturer, model>>>
         DataSet<Tuple2<String, ArrayList<Tuple2<String, String>>>> aircraftUsedCountFive = aircraftUsedCount.reduceGroup(new FiveMostUsedReducer());
 
-        // output file path
-        String outPutDir = "hdfs://soit-hdp-pro-1.ucc.usyd.edu.au/user/hche8927/output-t3/" + outputFileName;
-        // use specified unikey
-        if (args.length > 2) outPutDir = "hdfs://soit-hdp-pro-1.ucc.usyd.edu.au/user/" + args[2] + "/output-t3/" + outputFileName;
-
         // store in hadoop cluster
-        aircraftUsedCountFive.writeAsFormattedText(outPutDir, WriteMode.OVERWRITE,
+        aircraftUsedCountFive.writeAsFormattedText(outputDir, WriteMode.OVERWRITE,
         new TextFormatter<Tuple2<String, ArrayList<Tuple2<String, String>>>>() {
             public String format(Tuple2 <String, ArrayList<Tuple2<String, String>>> t) {
                 String outputString = "";
