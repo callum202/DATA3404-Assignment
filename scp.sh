@@ -1,14 +1,22 @@
 #!/bin/bash
 
 #run ./scp build [Task Number] to run the build script.
-#CHANGE LINE 8 TO REFLECT YOUR FOLDER SYSTEM
+#use argument 'bad' to build the 'bad' version of the code.
 if [ $1 == "build" ]
 then
   task=$2
-  cd Task\ $task
-  ./build.sh
+  cd Task\ $task #CHANGE TO REFLECT YOUR FOLDER SYSTEM
+  if [ "$#" -gt 3 ]
+  then
+    if [ $4 == "bad" ]
+    then
+      ./build.sh bad
+    fi
+  else
+    ./build.sh
+  fi
 
-#run ./scp scp [unikey] to transfer this script to the ssh
+#run ./scp [unikey] scp to transfer this script to the ssh
 elif [ $1 == "scp" ]
 then
   scp scp.sh $2@soit-hdp-pro-14.ucc.usyd.edu.au:/home/$2/
@@ -30,11 +38,35 @@ else
   arg1=$3
   arg2=$4
   arg3=$5
-
+  bad="false";
+  if [ $# != 3 ]
+  then
+    if [ $arg2 == "bad" ] || [ $arg3 == "bad" ]
+    then
+      bad=true
+    else
+      bad=false
+    fi
+  fi
   case $task in
-    1) class="TopThreeAirports";;
-    2) class="AverageFlightDelay";;
-    3) class="MostPopularAircraftTypes";;
+    1) if [ $bad = true ]
+      then
+        class="TopThreeAirportsBad"
+      else
+        class="TopThreeAirports"
+      fi ;;
+    2) if [ $bad = true ]
+        then
+          class="AverageFlightDelayBad"
+        else
+          class="AverageFlightDelay"
+        fi ;;
+    3) if [ $bad = true ]
+        then
+          class="MostPopularAircraftTypesBad"
+        else
+          class="MostPopularAircraftTypes"
+        fi ;;
   esac
 
 
