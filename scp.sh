@@ -5,7 +5,7 @@
 if [ $1 == "build" ]
 then
   task=$2
-  cd Task\ $task #CHANGE TO REFLECT YOUR FOLDER SYSTEM
+  cd Task$task #CHANGE TO REFLECT YOUR FOLDER SYSTEM
   if [ "$#" -gt 3 ]
   then
     if [ $4 == "bad" ]
@@ -13,7 +13,7 @@ then
       ./build.sh bad
     fi
   else
-    ./build.sh
+    ./build.sh $3
   fi
 
 #run ./scp [unikey] scp to transfer this script to the ssh
@@ -39,15 +39,15 @@ else
   arg2=$4
   arg3=$5
   bad="false";
-  if [ $# != 3 ]
-  then
-    if [ $arg2 == "bad" ] || [ $arg3 == "bad" ]
-    then
-      bad=true
-    else
-      bad=false
-    fi
-  fi
+  # if [ $# != 3 ]
+  # then
+  #   if [ $arg2 == "bad" ] || [ $arg3 == "bad" ]
+  #   then
+  #     bad=true
+  #   else
+  #     bad=false
+  #   fi
+  # fi
   case $task in
     1) if [ $bad = true ]
       then

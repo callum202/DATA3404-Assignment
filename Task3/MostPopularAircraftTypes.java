@@ -18,6 +18,13 @@ import java.io.File;
 
 public class MostPopularAircraftTypes {
     public static void main(String[] args) throws Exception {
+
+        // README!
+        // This program takes 3 optional arguments. These are as follows: 
+        //   [outputFileName] (default: result.txt)
+        //   [flightDirectory] (to specify which flights file - tiny, small, etc. Default: ontimeperformance_flights_tiny)
+        //   [outputDirectory] (to specify user directory in cluster to output to. Default: hdfs://soit-hdp-pro-1.ucc.usyd.edu.au/user/hche8927/output-t2/)
+
         // obtain an execution environment
         ExecutionEnvironment env = ExecutionEnvironment.getExecutionEnvironment();
 
@@ -224,4 +231,3 @@ public class MostPopularAircraftTypes {
     }
 
 }
-
